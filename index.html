@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fruit Match Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #fffae3;
+        }
+        h1 {
+            color: #ff6600;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 5px;
+            margin: 20px auto;
+            width: fit-content;
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out, background 0.5s;
+            background: #ffdb58;
+        }
+        .cell:hover {
+            transform: scale(1.1);
+        }
+        .highlight {
+            background: red !important;
+        }
+        #player-fruit, #score, #timer {
+            font-size: 24px;
+            margin: 15px;
+            padding: 10px;
+            background: #fff3cd;
+            display: inline-block;
+            border-radius: 8px;
+            box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.1);
+        }
+        .leaderboard {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+            min-width: 200px;
+        }
+        
+        .leaderboard h2 {
+            color: #ff6600;
+            margin-bottom: 15px;
+        }
+        
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #ffd700;
+        }
+        
+        #username-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+        
+        #username-modal input {
+            padding: 8px;
+            margin: 10px 0;
+            border: 2px solid #ffd700;
+            border-radius: 5px;
+        }
+        
+        #username-modal button {
+            background: #ff6600;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        @keyframes particle {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: brightness(1) drop-shadow(0 0 5px rgba(255,255,255,0.7)); }
+            50% { filter: brightness(1.3) drop-shadow(0 0 20px rgba(255,255,255,0.9)); }
+        }
+
+        @keyframes scorePopup {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
+        @keyframes flip {
+            0% { transform: perspective(400px) rotateY(0); }
+            100% { transform: perspective(400px) rotateY(360deg); }
+        }
+
+        .score-popup {
+            position: absolute;
+            animation: scorePopup 0.8s ease-out forwards;
+            color: #ff6b6b;
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(255,255,255,0.8);
+        }
+
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            animation: particle 0.6s ease-out forwards;
+        }
+
+        .glow-effect {
+            animation: glow 0.8s ease-in-out;
+        }
+
+        .flip-effect {
+            animation: flip 0.6s ease-in-out;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: scale(0); }
+            50% { opacity: 0.8; transform: scale(1); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes shine {
+            0% { background-position: -100% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            animation: sparkle 1.5s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .shine-effect {
+            background: linear-gradient(90deg, 
+                transparent, rgba(255,255,255,0.2), transparent);
+            background-size: 200% 100%;
+            animation: shine 1.5s linear infinite;
+        }
+
+        @keyframes bounce-gentle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .animate-bounce-gentle {
+            animation: bounce-gentle 2s infinite;
+        }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="font-sans text-center bg-gradient-to-br from-orange-100 via-amber-50 to-red-100 p-4 min-h-screen">
+    <h1 class="text-4xl font-bold text-orange-600 mb-6 drop-shadow-lg hover:scale-105 transition-transform duration-300">
+        🍓 Fruit Match Game 🫐
+    </h1>
+    
+    <!-- Oyun bilgileri -->
+    <div class="flex flex-wrap justify-center items-center gap-4 lg:gap-6 mb-8">
+        <!-- Current Fruit -->
+        <div class="relative group">
+            <div id="player-fruit" class="text-xl lg:text-2xl px-6 py-3 
+                bg-gradient-to-br from-white/90 to-white/80 
+                backdrop-blur-sm rounded-lg shadow-lg border border-white/30
+                hover:shadow-white/20 hover:scale-105 transition-all duration-300
+                flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-purple-600 font-semibold">Current Fruit:</span>
+                    <span class="text-4xl animate-bounce-gentle bg-purple-100 p-2 rounded-lg shadow-inner"></span>
+                </div>
+                <button id="helpBtn" class="ml-2 bg-purple-500 hover:bg-purple-600 text-white text-sm px-3 py-1.5 rounded-full 
+                    transition-all duration-300 flex items-center gap-1.5 shadow-lg hover:shadow-purple-300/50">
+                    <span>Find Matches</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Score -->
+        <div class="relative">
+            <div id="score" class="text-xl lg:text-2xl px-6 py-3 
+                bg-gradient-to-br from-white/90 to-white/80 
+                backdrop-blur-sm rounded-lg shadow-lg border border-white/30
+                hover:shadow-white/20 hover:scale-105 transition-all duration-300
+                flex items-center gap-2">
+                <span class="text-orange-500 font-semibold">Score:</span>
+                <span class="text-2xl font-bold bg-gradient-to-r from-orange-400 to-pink-500 text-transparent bg-clip-text">0</span>
+            </div>
+        </div>
+
+        <!-- Timer -->
+        <div class="relative">
+            <div id="timer" class="text-xl lg:text-2xl px-6 py-3 
+                bg-gradient-to-br from-white/90 to-white/80 
+                backdrop-blur-sm rounded-lg shadow-lg border border-white/30
+                hover:shadow-white/20 hover:scale-105 transition-all duration-300
+                flex items-center gap-2">
+                <span class="text-emerald-600 font-semibold">Time:</span>
+                <div class="flex items-center">
+                    <span class="countdown-number text-2xl font-bold text-emerald-500">120</span>
+                    <span class="text-sm text-emerald-600 ml-1">s</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Oyun Grid'i -->
+    <div id="game-grid" class="grid grid-cols-8 grid-rows-8 gap-1.5 mx-auto w-fit 
+        bg-gradient-to-br from-white/40 to-white/30 
+        backdrop-blur-md p-3 rounded-xl shadow-xl border border-white/30 mb-4">
+    </div>
+
+    <!-- Sadece Desktop Leaderboard -->
+    <div class="hidden lg:block fixed right-6 top-1/2 transform -translate-y-1/2 
+        bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/30
+        min-w-[250px]">
+        <h2 class="text-2xl font-bold text-purple-600 mb-4">Leaderboard</h2>
+        <div id="leaderboard-list" class="space-y-2">
+            <!-- Skor listesi buraya gelecek -->
+        </div>
+    </div>
+
+    <!-- Mobil Leaderboard -->
+    <div class="lg:hidden flex flex-col gap-4 px-4 mb-20">
+        <div class="bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-lg border border-white/30">
+            <h2 class="text-lg font-bold text-purple-600 mb-2">Top Scores</h2>
+            <div id="leaderboard-list-mobile" class="space-y-1 max-h-[200px] overflow-y-auto">
+                <!-- Mobil skor listesi buraya gelecek -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Username Modal -->
+    <div id="username-modal" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
+        bg-white/90 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/50 z-50">
+        <h2 class="text-2xl font-bold text-purple-600 mb-4">Welcome to Fruit Match!</h2>
+        <input type="text" id="username-input" 
+            class="w-full px-4 py-2 rounded-lg border border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none"
+            placeholder="Enter your username">
+        <button id="start-button" 
+            class="mt-4 w-full bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-all duration-300">
+            Start Game
+        </button>
+    </div>
+
+    <script>
+        class FruitMatchGame {
+            constructor() {
+                this.gridSize = 8;
+                this.fruits = ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇'];
+                this.grid = this.createGrid();
+                this.playerFruit = this.getRandomFruit();
+                this.score = 0;
+                this.timeLeft = 120;
+                this.timer = null;
+                this.helpMode = false;
+                this.leaderboard = JSON.parse(localStorage.getItem('leaderboard') || '[]');
+                
+                // Help butonunu ayarla
+                this.setupHelpButton();
+                
+                // Kullanıcı adı modalını göster
+                this.showUsernameModal();
+                this.updateLeaderboardUI();
+            }
+
+            showUsernameModal() {
+                const modal = document.getElementById('username-modal');
+                const input = document.getElementById('username-input');
+                const button = document.getElementById('start-button');
+
+                modal.style.display = 'block';
+                input.focus();
+
+                button.onclick = () => {
+                    const username = input.value.trim();
+                    if (username) {
+                        this.username = username;
+                        modal.style.display = 'none';
+                        this.startTimer();
+                        this.updateUI();
+                        this.updateLeaderboardUI();
+                    }
+                };
+
+                input.onkeypress = (e) => {
+                    if (e.key === 'Enter') {
+                        button.click();
+                    }
+                };
+            }
+
+            createGrid() {
+                const grid = [];
+                for (let i = 0; i < this.gridSize; i++) {
+                    grid[i] = [];
+                    for (let j = 0; j < this.gridSize; j++) {
+                        grid[i][j] = this.getRandomFruit();
+                    }
+                }
+                return grid;
+            }
+
+            getRandomFruit() {
+                return this.fruits[Math.floor(Math.random() * this.fruits.length)];
+            }
+
+            setupHelpButton() {
+                const helpBtn = document.getElementById('helpBtn');
+                helpBtn.addEventListener('click', () => {
+                    this.helpMode = !this.helpMode;
+                    this.updateUI();
+                    
+                    if (this.helpMode) {
+                        helpBtn.classList.add('bg-orange-500');
+                        helpBtn.classList.remove('bg-purple-500');
+                    } else {
+                        helpBtn.classList.remove('bg-orange-500');
+                        helpBtn.classList.add('bg-purple-500');
+                    }
+                });
+            }
+
+            startTimer() {
+                if (this.timer) clearInterval(this.timer);
+                
+                this.timer = setInterval(() => {
+                    this.timeLeft--;
+                    this.updateUI();
+                    
+                    if (this.timeLeft <= 0) {
+                        clearInterval(this.timer);
+                        this.endGame();
+                    }
+                }, 1000);
+            }
+
+            updateUI() {
+                const gridElement = document.getElementById("game-grid");
+                gridElement.innerHTML = "";
+                
+                this.grid.forEach((row, y) => {
+                    row.forEach((cell, x) => {
+                        const cellElement = document.createElement("div");
+                        const isMatchingFruit = cell === this.playerFruit;
+                        
+                        cellElement.classList.add(
+                            "w-[40px]", "h-[40px]", "lg:w-[50px]", "lg:h-[50px]", 
+                            "flex", "items-center", "justify-center",
+                            "text-2xl", "lg:text-3xl", "rounded-lg", "cursor-pointer",
+                            "transition-all", "duration-300", "ease-in-out",
+                            "hover:scale-110", 
+                            "backdrop-blur-sm",
+                            "shadow-sm", "hover:shadow-lg",
+                            "border", "border-white/30",
+                            "hover:shadow-white/20",
+                            "relative"
+                        );
+
+                        if (this.helpMode && isMatchingFruit) {
+                            cellElement.classList.add(
+                                "bg-gradient-to-br", "from-yellow-200/90", "to-yellow-100/80",
+                                "animate-pulse", "ring-2", "ring-yellow-400"
+                            );
+                        } else {
+                            cellElement.classList.add(
+                                "bg-gradient-to-br", "from-white/80", "to-white/60"
+                            );
+                        }
+
+                        cellElement.textContent = cell;
+                        cellElement.onclick = () => this.placeFruit(x, y);
+                        gridElement.appendChild(cellElement);
+                    });
+                });
+
+                // Current Fruit güncellemesi
+                const playerFruitSpan = document.getElementById("player-fruit").querySelector("span:nth-child(2)");
+                if (playerFruitSpan) {
+                    playerFruitSpan.textContent = this.playerFruit;
+                }
+                
+                // Score ve timer güncellemesi
+                const scoreElement = document.getElementById("score").querySelector("span:nth-child(2)");
+                scoreElement.textContent = this.score;
+                
+                const timerElement = document.querySelector(".countdown-number");
+                timerElement.textContent = this.timeLeft;
+            }
+
+            placeFruit(x, y) {
+                if (!this.grid[y][x]) return;
+                
+                [this.grid[y][x], this.playerFruit] = [this.playerFruit, this.grid[y][x]];
+                this.updateUI();
+                this.checkMatches();
+            }
+
+            checkMatches() {
+                let matchedPositions = new Set();
+                
+                // Yatay kontrol
+                for (let y = 0; y < this.gridSize; y++) {
+                    for (let x = 0; x <= this.gridSize - 4; x++) {
+                        const fruit = this.grid[y][x];
+                        if (!fruit) continue;
+                        
+                        if (this.grid[y][x + 1] === fruit && 
+                            this.grid[y][x + 2] === fruit && 
+                            this.grid[y][x + 3] === fruit) {
+                            matchedPositions.add(`${x},${y}`);
+                            matchedPositions.add(`${x + 1},${y}`);
+                            matchedPositions.add(`${x + 2},${y}`);
+                            matchedPositions.add(`${x + 3},${y}`);
+                        }
+                    }
+                }
+                
+                // Dikey kontrol
+                for (let x = 0; x < this.gridSize; x++) {
+                    for (let y = 0; y <= this.gridSize - 4; y++) {
+                        const fruit = this.grid[y][x];
+                        if (!fruit) continue;
+                        
+                        if (this.grid[y + 1][x] === fruit && 
+                            this.grid[y + 2][x] === fruit && 
+                            this.grid[y + 3][x] === fruit) {
+                            matchedPositions.add(`${x},${y}`);
+                            matchedPositions.add(`${x},${y + 1}`);
+                            matchedPositions.add(`${x},${y + 2}`);
+                            matchedPositions.add(`${x},${y + 3}`);
+                        }
+                    }
+                }
+
+                if (matchedPositions.size > 0) {
+                    this.highlightAndClear(matchedPositions);
+                    return true;
+                }
+                return false;
+            }
+
+            highlightAndClear(matchedPositions) {
+                const cells = document.querySelectorAll("#game-grid > div");
+                matchedPositions.forEach(pos => {
+                    const [x, y] = pos.split(",").map(Number);
+                    const cell = cells[y * this.gridSize + x];
+                    const rect = cell.getBoundingClientRect();
+                    
+                    // Skor popup'ı
+                    const scorePopup = document.createElement('div');
+                    scorePopup.className = 'score-popup';
+                    scorePopup.textContent = '+5';
+                    scorePopup.style.left = `${rect.left + rect.width/2}px`;
+                    scorePopup.style.top = `${rect.top}px`;
+                    document.body.appendChild(scorePopup);
+                    setTimeout(() => scorePopup.remove(), 1000);
+                    
+                    // Highlight efekti
+                    cell.classList.add(
+                        "bg-gradient-to-br",
+                        "from-orange-400/90",
+                        "to-red-400/80",
+                        "scale-110"
+                    );
+                });
+
+                setTimeout(() => {
+                    matchedPositions.forEach(pos => {
+                        const [x, y] = pos.split(",").map(Number);
+                        // Yukarıdaki meyveleri aşağı kaydır
+                        for (let j = y; j > 0; j--) {
+                            this.grid[j][x] = this.grid[j - 1][x];
+                        }
+                        // En üste yeni meyve ekle
+                        this.grid[0][x] = this.getRandomFruit();
+                    });
+                    
+                    this.score += matchedPositions.size * 5;
+                    this.updateUI();
+                    
+                    // Yeni eşleşmeleri kontrol et
+                    setTimeout(() => {
+                        if (this.checkMatches()) {
+                            // Yeni eşleşmeler varsa onları da patlat
+                            this.updateUI();
+                        }
+                    }, 100);
+                }, 500);
+            }
+
+            endGame() {
+                clearInterval(this.timer);
+                
+                this.leaderboard.push({
+                    username: this.username,
+                    score: this.score,
+                    date: new Date().toISOString()
+                });
+                
+                localStorage.setItem('leaderboard', JSON.stringify(this.leaderboard));
+                this.updateLeaderboardUI();
+                
+                alert(`Game Over! ${this.username} - Final Score: ${this.score}`);
+                
+                if (confirm('Would you like to play again?')) {
+                    location.reload();
+                }
+            }
+
+            updateLeaderboardUI() {
+                const desktopList = document.getElementById('leaderboard-list');
+                const mobileList = document.getElementById('leaderboard-list-mobile');
+                
+                // En yüksek 10 skoru göster
+                const topScores = [...this.leaderboard]
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 10);
+
+                const leaderboardHTML = topScores.map((entry, index) => `
+                    <div class="leaderboard-item flex justify-between items-center 
+                        py-2 px-3 rounded-lg bg-white/50 backdrop-blur-sm
+                        border border-white/30 hover:bg-white/60 transition-all duration-300">
+                        <div class="flex items-center gap-2">
+                            <span class="text-purple-600 font-bold">#${index + 1}</span>
+                            <span class="font-semibold">${entry.username}</span>
+                        </div>
+                        <span class="text-orange-500 font-bold">${entry.score}</span>
+                    </div>
+                `).join('');
+
+                const mobileHTML = topScores.map((entry, index) => `
+                    <div class="leaderboard-item flex justify-between items-center 
+                        py-1 px-2 rounded-lg bg-white/50 backdrop-blur-sm
+                        border border-white/30 text-sm">
+                        <div class="flex items-center gap-1">
+                            <span class="text-purple-600 font-bold">#${index + 1}</span>
+                            <span class="font-semibold truncate max-w-[80px]">${entry.username}</span>
+                        </div>
+                        <span class="text-orange-500 font-bold">${entry.score}</span>
+                    </div>
+                `).join('');
+
+                if (desktopList) desktopList.innerHTML = leaderboardHTML;
+                if (mobileList) mobileList.innerHTML = mobileHTML;
+            }
+        }
+
+        // Oyunu başlat
+        document.addEventListener('DOMContentLoaded', () => {
+            const game = new FruitMatchGame();
+        });
+    </script>
+</body>
+</html>
