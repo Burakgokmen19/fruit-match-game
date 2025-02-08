@@ -201,6 +201,19 @@
         .animate-bounce-gentle {
             animation: bounce-gentle 2s infinite;
         }
+
+        /* Mobil için input otofill stilini düzelt */
+        @media (max-width: 768px) {
+            #username-input:-webkit-autofill {
+                -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.9) inset !important;
+            }
+            
+            /* Mobilde klavye açıldığında modal pozisyonunu düzelt */
+            #username-modal {
+                position: fixed;
+                top: 40%;
+            }
+        }
     </style>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -318,13 +331,22 @@
 
     <!-- Username Modal -->
     <div id="username-modal" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-        bg-white/90 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/50 z-50">
-        <h2 class="text-2xl font-bold text-purple-600 mb-4">Welcome to Fruit Match!</h2>
+        bg-white/90 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-white/50 z-50
+        w-[90%] lg:w-auto max-w-[400px] min-w-[280px]">
+        <h2 class="text-2xl lg:text-3xl font-bold text-purple-600 mb-6 
+            bg-gradient-to-r from-purple-600 to-pink-500 text-transparent bg-clip-text">
+            Welcome to Fruit Match!
+        </h2>
         <input type="text" id="username-input" 
-            class="w-full px-4 py-2 rounded-lg border border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none"
+            class="w-full px-4 py-3 rounded-lg text-lg border border-purple-200 
+            focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none
+            bg-white/80 backdrop-blur-sm placeholder-purple-300"
             placeholder="Enter your username">
         <button id="start-button" 
-            class="mt-4 w-full bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-all duration-300">
+            class="mt-6 w-full bg-gradient-to-r from-purple-500 to-pink-500 
+            text-white py-3 px-4 rounded-lg text-lg font-semibold
+            transition-all duration-300 hover:opacity-90 hover:shadow-lg
+            shadow-md shadow-purple-300/30">
             Start Game
         </button>
     </div>
@@ -342,10 +364,7 @@
                 this.helpMode = false;
                 this.leaderboard = JSON.parse(localStorage.getItem('leaderboard') || '[]');
                 
-                // Help butonunu ayarla
                 this.setupHelpButton();
-                
-                // Kullanıcı adı modalını göster
                 this.showUsernameModal();
                 this.updateLeaderboardUI();
             }
@@ -412,13 +431,34 @@
                 
                 this.timer = setInterval(() => {
                     this.timeLeft--;
-                    this.updateUI();
+                    
+                    // Tüm timer elementlerini güncelle
+                    document.querySelectorAll(".countdown-number").forEach(element => {
+                        element.textContent = this.timeLeft;
+                    });
+                    
+                    // Tüm score elementlerini güncelle
+                    this.updateAllScores();
                     
                     if (this.timeLeft <= 0) {
                         clearInterval(this.timer);
                         this.endGame();
                     }
                 }, 1000);
+            }
+
+            updateAllScores() {
+                // Desktop score güncelleme
+                const desktopScore = document.querySelector("#score span:nth-child(2)");
+                if (desktopScore) {
+                    desktopScore.textContent = this.score;
+                }
+
+                // Mobil score güncelleme
+                const mobileScore = document.querySelector("#mobile-score span:nth-child(2)");
+                if (mobileScore) {
+                    mobileScore.textContent = this.score;
+                }
             }
 
             updateUI() {
@@ -466,12 +506,13 @@
                     playerFruitSpan.textContent = this.playerFruit;
                 }
                 
-                // Score ve timer güncellemesi
-                const scoreElement = document.getElementById("score").querySelector("span:nth-child(2)");
-                scoreElement.textContent = this.score;
+                // Tüm timer elementlerini güncelle
+                document.querySelectorAll(".countdown-number").forEach(element => {
+                    element.textContent = this.timeLeft;
+                });
                 
-                const timerElement = document.querySelector(".countdown-number");
-                timerElement.textContent = this.timeLeft;
+                // Tüm score elementlerini güncelle
+                this.updateAllScores();
             }
 
             placeFruit(x, y) {
@@ -554,21 +595,21 @@
                 setTimeout(() => {
                     matchedPositions.forEach(pos => {
                         const [x, y] = pos.split(",").map(Number);
-                        // Yukarıdaki meyveleri aşağı kaydır
                         for (let j = y; j > 0; j--) {
                             this.grid[j][x] = this.grid[j - 1][x];
                         }
-                        // En üste yeni meyve ekle
                         this.grid[0][x] = this.getRandomFruit();
                     });
                     
                     this.score += matchedPositions.size * 5;
+                    
+                    // Tüm score elementlerini güncelle
+                    this.updateAllScores();
+                    
                     this.updateUI();
                     
-                    // Yeni eşleşmeleri kontrol et
                     setTimeout(() => {
                         if (this.checkMatches()) {
-                            // Yeni eşleşmeler varsa onları da patlat
                             this.updateUI();
                         }
                     }, 100);
@@ -629,6 +670,13 @@
 
                 if (desktopList) desktopList.innerHTML = leaderboardHTML;
                 if (mobileList) mobileList.innerHTML = mobileHTML;
+            }
+
+            // Score güncelleme fonksiyonu
+            updateScore(points) {
+                this.score += points;
+                // UI'ı güncelle
+                this.updateUI();
             }
         }
 
